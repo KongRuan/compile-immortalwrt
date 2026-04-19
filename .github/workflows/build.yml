@@ -1,0 +1,60 @@
+name: ImmortalWrt Firmware Build
+
+on:
+  # 手动触发（推荐）
+  workflow_dispatch:
+    inputs:
+      device:
+        description: '设备型号（如 x86_64, rpi4, ax3600 等）'
+        required: true
+        default: 'x86_64'
+      branch:
+        description: 'ImmortalWrt 分支（如 master, openwrt-23.05 等）'
+        required: true
+        default: 'master'
+      config_file:
+        description: '配置文件路径（相对路径）'
+        required: true
+        default: 'configs/x86_64_default.config'
+
+  # 定时触发（可选）
+  schedule:
+    - cron: '0 0 * * 0'  # 每周日执行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 步骤1：检出代码
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 步骤2：设置编译环境（安装依赖）
+      - name: Prepare Build Environment
+        run: bash scripts/prepare.sh
+
+      # 步骤3：克隆 ImmortalWrt 源码
+      - name: Clone ImmortalWrt Source
+        run: |
+          git clone --depth 1 https://github.com/immortalwrt/immortalwrt.git immortalwrt
+          cd immortalwrt
+          git checkout ${{ github.event.inputs.branch }}
+
+      # 步骤4：应用配置文件
+      - name: Apply Config
+        run: |
+          cp ${{ github.event.inputs.config_file }} immortalwrt/.config
+          cd immortalwrt
+          make defconfig
+
+      # 步骤5：编译固件
+      - name: Build Firmware
+        run: bash scripts/build.sh
+
+      # 步骤6：上传编译产物
+      - name: Upload Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: immortalwrt-firmware-${{ github.event.inputs.device }}-${{ github.sha }}
+          path: immortalwrt/bin/targets/**/*
+          retention-days: 7
