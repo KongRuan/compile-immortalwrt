@@ -5,7 +5,7 @@ set -e
 sudo apt update
 sudo apt upgrade -y
 
-# 安装编译依赖
+# 安装编译依赖（移除 python3-distutils）
 sudo apt install -y \
     build-essential \
     clang \
@@ -19,7 +19,6 @@ sudo apt install -y \
     libncurses5-dev \
     libssl-dev \
     python3 \
-    python3-distutils \
     rsync \
     unzip \
     zlib1g-dev \
