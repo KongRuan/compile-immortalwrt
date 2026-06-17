@@ -24,6 +24,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DEVICE: ${{ github.event.inputs.device || 'x86_64' }}
+      BRANCH: ${{ github.event.inputs.branch || 'master' }}
+      CONFIG_FILE: ${{ github.event.inputs.config_file || 'configs/x86_64_default.config' }}
     steps:
       # 步骤1：检出代码
       - name: Checkout Repository
