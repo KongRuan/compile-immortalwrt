@@ -1,31 +1,29 @@
 name: ImmortalWrt Firmware Build
 
 on:
-  # 手动触发
   workflow_dispatch:
     inputs:
       device:
-        description: "设备型号（如 x86_64、rpi4、ax3600）"
+        description: "Device model (for example: x86_64, rpi4, ax3600)"
         required: true
         default: "x86_64"
         type: string
       branch:
-        description: "ImmortalWrt 分支（如 master、openwrt-23.05）"
+        description: "ImmortalWrt branch (for example: master, openwrt-23.05)"
         required: true
         default: "master"
         type: string
       config_file:
-        description: "配置文件路径（相对于当前仓库）"
+        description: "Config file path relative to this repository"
         required: true
         default: "configs/x86_64_default.config"
         type: string
 
-  # 每周日北京时间 08:00 运行
   schedule:
     - cron: "0 0 * * 0"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -38,16 +36,13 @@ jobs:
       CONFIG_FILE: ${{ inputs.config_file || 'configs/x86_64_default.config' }}
 
     steps:
-      # 步骤 1：检出当前仓库
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 步骤 2：安装编译依赖
       - name: Prepare Build Environment
         shell: bash
         run: bash scripts/prepare.sh
 
-      # 步骤 3：克隆指定分支
       - name: Clone ImmortalWrt Source
         shell: bash
         run: |
@@ -64,15 +59,13 @@ jobs:
             https://github.com/immortalwrt/immortalwrt.git \
             immortalwrt
 
-      # 步骤 4：应用配置文件
       - name: Apply Config
         shell: bash
         run: |
           set -euo pipefail
 
           if [[ ! -f "$CONFIG_FILE" ]]; then
-            echo "::error::配置文件不存在：$CONFIG_FILE"
-            echo "当前仓库中的配置文件："
+            echo "::error::Config file does not exist: $CONFIG_FILE"
             find configs -maxdepth 2 -type f -print 2>/dev/null || true
             exit 1
           fi
@@ -82,16 +75,61 @@ jobs:
           cd immortalwrt
           make defconfig
 
-      # 步骤 5：编译固件
       - name: Build Firmware
         shell: bash
         run: bash scripts/build.sh
 
-      # 步骤 6：上传编译产物
-      - name: Upload Firmware
+      - name: Collect Firmware
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -d immortalwrt/bin/targets ]]; then
+            echo "::error::Firmware output directory does not exist"
+            exit 1
+          fi
+
+          mkdir -p output
+          cp -a immortalwrt/bin/targets/. output/
+
+          if ! find output -type f -print -quit | grep -q .; then
+            echo "::error::No firmware files were found"
+            exit 1
+          fi
+
+          (
+            cd output
+            find . -type f ! -name SHA256SUMS -print0 \
+              | sort -z \
+              | xargs -0 -r sha256sum
+          ) > output/SHA256SUMS
+
+          build_date="$(date -u +'%Y%m%d')"
+          release_tag="firmware-${DEVICE}-${build_date}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "date=$build_date" >> "$GITHUB_OUTPUT"
+
+          echo "Collected firmware files:"
+          find output -type f -print
+
+      - name: Upload Firmware Artifact
         uses: actions/upload-artifact@v4
         with:
           name: immortalwrt-firmware-${{ env.DEVICE }}-${{ github.sha }}
-          path: immortalwrt/bin/targets/**/*
+          path: output/**/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: ImmortalWrt ${{ env.DEVICE }} ${{ steps.release.outputs.date }}
+          generate_release_notes: true
+          files: output/**/*
+          fail_on_unmatched_files: true
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
