@@ -1,64 +1,97 @@
 name: ImmortalWrt Firmware Build
 
 on:
-  # 手动触发（推荐）
+  # 手动触发
   workflow_dispatch:
     inputs:
       device:
-        description: '设备型号（如 x86_64, rpi4, ax3600 等）'
+        description: "设备型号（如 x86_64、rpi4、ax3600）"
         required: true
-        default: 'x86_64'
+        default: "x86_64"
+        type: string
       branch:
-        description: 'ImmortalWrt 分支（如 master, openwrt-23.05 等）'
+        description: "ImmortalWrt 分支（如 master、openwrt-23.05）"
         required: true
-        default: 'master'
+        default: "master"
+        type: string
       config_file:
-        description: '配置文件路径（相对路径）'
+        description: "配置文件路径（相对于当前仓库）"
         required: true
-        default: 'configs/x86_64_default.config'
+        default: "configs/x86_64_default.config"
+        type: string
 
-  # 定时触发（可选）
+  # 每周日北京时间 08:00 运行
   schedule:
-    - cron: '0 0 * * 0'  # 每周日执行
+    - cron: "0 0 * * 0"
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build ${{ inputs.device || 'x86_64' }}
     runs-on: ubuntu-latest
+
     env:
-      DEVICE: ${{ github.event.inputs.device || 'x86_64' }}
-      BRANCH: ${{ github.event.inputs.branch || 'master' }}
-      CONFIG_FILE: ${{ github.event.inputs.config_file || 'configs/x86_64_default.config' }}
+      DEVICE: ${{ inputs.device || 'x86_64' }}
+      BRANCH: ${{ inputs.branch || 'master' }}
+      CONFIG_FILE: ${{ inputs.config_file || 'configs/x86_64_default.config' }}
+
     steps:
-      # 步骤1：检出代码
+      # 步骤 1：检出当前仓库
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 步骤2：设置编译环境（安装依赖）
+      # 步骤 2：安装编译依赖
       - name: Prepare Build Environment
+        shell: bash
         run: bash scripts/prepare.sh
 
-      # 步骤3：克隆 ImmortalWrt 源码
+      # 步骤 3：克隆指定分支
       - name: Clone ImmortalWrt Source
+        shell: bash
         run: |
-          git clone --depth 1 https://github.com/immortalwrt/immortalwrt.git immortalwrt
-          cd immortalwrt
-          git checkout ${{ github.event.inputs.branch }}
+          set -euo pipefail
 
-      # 步骤4：应用配置文件
+          echo "Device: $DEVICE"
+          echo "Branch: $BRANCH"
+          echo "Config file: $CONFIG_FILE"
+
+          git clone \
+            --depth 1 \
+            --single-branch \
+            --branch "$BRANCH" \
+            https://github.com/immortalwrt/immortalwrt.git \
+            immortalwrt
+
+      # 步骤 4：应用配置文件
       - name: Apply Config
+        shell: bash
         run: |
-          cp ${{ github.event.inputs.config_file }} immortalwrt/.config
+          set -euo pipefail
+
+          if [[ ! -f "$CONFIG_FILE" ]]; then
+            echo "::error::配置文件不存在：$CONFIG_FILE"
+            echo "当前仓库中的配置文件："
+            find configs -maxdepth 2 -type f -print 2>/dev/null || true
+            exit 1
+          fi
+
+          cp "$CONFIG_FILE" immortalwrt/.config
+
           cd immortalwrt
           make defconfig
 
-      # 步骤5：编译固件
+      # 步骤 5：编译固件
       - name: Build Firmware
+        shell: bash
         run: bash scripts/build.sh
 
-      # 步骤6：上传编译产物
+      # 步骤 6：上传编译产物
       - name: Upload Firmware
         uses: actions/upload-artifact@v4
         with:
-          name: immortalwrt-firmware-${{ github.event.inputs.device }}-${{ github.sha }}
+          name: immortalwrt-firmware-${{ env.DEVICE }}-${{ github.sha }}
           path: immortalwrt/bin/targets/**/*
+          if-no-files-found: error
           retention-days: 7
