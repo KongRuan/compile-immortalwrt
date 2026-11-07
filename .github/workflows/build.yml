@@ -67,7 +67,11 @@ jobs:
 
           cd immortalwrt
           ./scripts/feeds update -a
-          ./scripts/feeds install -p packages adguardhome
+          ./scripts/feeds install -p packages -a
+          ./scripts/feeds install -p luci -a
+          ./scripts/feeds install -p routing -a
+          ./scripts/feeds install -p telephony -a
+          ./scripts/feeds install -p video -a
           ./scripts/feeds install -p nikki nikki luci-app-nikki
           ./scripts/feeds install -p adguardhome luci-app-adguardhome
 
