@@ -59,7 +59,7 @@ jobs:
             https://github.com/immortalwrt/immortalwrt.git \
             immortalwrt
 
-          echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;v1.9.3" >> immortalwrt/feeds.conf.default
+          echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git^78e1a751d55ed0762811f054ee699049473da7b8" >> immortalwrt/feeds.conf.default
           git clone --depth 1 --single-branch --branch main \
             https://github.com/kenzok78/luci-app-adguardhome.git \
             immortalwrt/package/luci-app-adguardhome
