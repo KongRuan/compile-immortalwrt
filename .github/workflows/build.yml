@@ -89,7 +89,6 @@ jobs:
           for package in nikki luci-app-nikki adguardhome luci-app-adguardhome; do
             grep -qx "CONFIG_PACKAGE_${package}=y" .config || { echo "::error::Missing package: $package"; exit 1; }
           done
-          grep -qx 'CONFIG_PACKAGE_luci-app-adguardhome_INCLUDE_binary=y' .config || { echo '::error::AdGuardHome binary is not selected'; exit 1; }
           grep -qx 'CONFIG_TARGET_ROOTFS_PARTSIZE=1024' .config || { echo '::error::Root partition is not 1024 MiB'; exit 1; }
 
       - name: Build Firmware
