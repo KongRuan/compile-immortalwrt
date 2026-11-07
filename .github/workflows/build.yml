@@ -9,9 +9,9 @@ on:
         default: "x86_64"
         type: string
       branch:
-        description: "ImmortalWrt branch (for example: master, openwrt-23.05)"
+        description: "ImmortalWrt branch (for example: openwrt-25.12)"
         required: true
-        default: "master"
+        default: "openwrt-25.12"
         type: string
       config_file:
         description: "Config file path relative to this repository"
@@ -32,7 +32,7 @@ jobs:
 
     env:
       DEVICE: ${{ inputs.device || 'x86_64' }}
-      BRANCH: ${{ inputs.branch || 'master' }}
+      BRANCH: ${{ inputs.branch || 'openwrt-25.12' }}
       CONFIG_FILE: ${{ inputs.config_file || 'configs/x86_64_default.config' }}
 
     steps:
@@ -60,13 +60,16 @@ jobs:
             immortalwrt
 
           echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> immortalwrt/feeds.conf.default
+          echo "src-git adguardhome https://github.com/kenzok78/luci-app-adguardhome.git" >> immortalwrt/feeds.conf.default
           mkdir -p immortalwrt/files
           cp -a files/. immortalwrt/files/
           chmod +x immortalwrt/files/etc/uci-defaults/99-timezone
 
           cd immortalwrt
           ./scripts/feeds update -a
+          ./scripts/feeds install -p packages adguardhome
           ./scripts/feeds install -p nikki nikki luci-app-nikki
+          ./scripts/feeds install -p adguardhome luci-app-adguardhome
 
       - name: Apply Config
         shell: bash
@@ -83,9 +86,10 @@ jobs:
 
           cd immortalwrt
           make defconfig
-          for package in nikki luci-app-nikki; do
+          for package in nikki luci-app-nikki adguardhome luci-app-adguardhome; do
             grep -qx "CONFIG_PACKAGE_${package}=y" .config || { echo "::error::Missing package: $package"; exit 1; }
           done
+          grep -qx 'CONFIG_PACKAGE_luci-app-adguardhome_INCLUDE_binary=y' .config || { echo '::error::AdGuardHome binary is not selected'; exit 1; }
           grep -qx 'CONFIG_TARGET_ROOTFS_PARTSIZE=1024' .config || { echo '::error::Root partition is not 1024 MiB'; exit 1; }
 
       - name: Build Firmware
