@@ -69,6 +69,7 @@ sudo apt install -y \
     qemu-utils \
     re2c \
     rsync \
+    scons \
     squashfs-tools \
     subversion \
     swig \
