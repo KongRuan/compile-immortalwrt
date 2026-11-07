@@ -60,7 +60,9 @@ jobs:
             immortalwrt
 
           echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> immortalwrt/feeds.conf.default
-          echo "src-git adguardhome https://github.com/kenzok78/luci-app-adguardhome.git" >> immortalwrt/feeds.conf.default
+          git clone --depth 1 --single-branch --branch main \
+            https://github.com/kenzok78/luci-app-adguardhome.git \
+            immortalwrt/package/luci-app-adguardhome
           mkdir -p immortalwrt/files
           cp -a files/. immortalwrt/files/
           chmod +x immortalwrt/files/etc/uci-defaults/99-timezone
@@ -75,15 +77,14 @@ jobs:
           ./scripts/feeds install -p telephony -a
           ./scripts/feeds install -p video -a
           ./scripts/feeds install -p nikki nikki luci-app-nikki
-          ./scripts/feeds install -p adguardhome luci-app-adguardhome
           for package_path in \
             package/feeds/packages/lm-sensors \
             package/feeds/luci/luci \
             package/feeds/nikki/nikki \
-            package/feeds/nikki/luci-app-nikki \
-            package/feeds/adguardhome/luci-app-adguardhome; do
+            package/feeds/nikki/luci-app-nikki; do
             test -e "$package_path" || { echo "::error::Feed package link is missing: $package_path"; exit 1; }
           done
+          test -f package/luci-app-adguardhome/Makefile || { echo '::error::AdGuardHome LuCI package is missing'; exit 1; }
 
       - name: Apply Config
         shell: bash
