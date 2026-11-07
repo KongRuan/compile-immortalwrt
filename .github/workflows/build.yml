@@ -76,6 +76,14 @@ jobs:
           ./scripts/feeds install -p video -a
           ./scripts/feeds install -p nikki nikki luci-app-nikki
           ./scripts/feeds install -p adguardhome luci-app-adguardhome
+          for package_path in \
+            package/feeds/packages/lm-sensors \
+            package/feeds/luci/luci \
+            package/feeds/nikki/nikki \
+            package/feeds/nikki/luci-app-nikki \
+            package/feeds/adguardhome/luci-app-adguardhome; do
+            test -e "$package_path" || { echo "::error::Feed package link is missing: $package_path"; exit 1; }
+          done
 
       - name: Apply Config
         shell: bash
@@ -115,9 +123,9 @@ jobs:
           mkdir -p output
           cp -a immortalwrt/bin/targets/. output/
 
-          immortwrt_version="${BRANCH#openwrt-}"
-          immortwrt_version="${immortwrt_version//\//-}"
-          printf 'ImmortalWrt branch: %s\nImmortalWrt version: %s\n' "$BRANCH" "$immortwrt_version" > output/IMMORTALWRT_VERSION
+          immortalwrt_version="${BRANCH#openwrt-}"
+          immortalwrt_version="${immortalwrt_version//\//-}"
+          printf 'ImmortalWrt branch: %s\nImmortalWrt version: %s\n' "$BRANCH" "$immortalwrt_version" > output/IMMORTALWRT_VERSION
 
           if ! find output -type f -print -quit | grep -q .; then
             echo "::error::No firmware files were found"
@@ -132,8 +140,8 @@ jobs:
           ) > output/SHA256SUMS
 
           build_date="$(date -u +'%Y%m%d')"
-          release_tag="firmware-${immortwrt_version}-${DEVICE}-${build_date}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
-          archive_name="immortalwrt-${immortwrt_version}-${DEVICE}-${build_date}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}.tar.gz"
+          release_tag="firmware-${immortalwrt_version}-${DEVICE}-${build_date}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          archive_name="immortalwrt-${immortalwrt_version}-${DEVICE}-${build_date}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}.tar.gz"
 
           tar -czf "$archive_name" -C output .
           sha256sum "$archive_name" > "${archive_name}.sha256"
