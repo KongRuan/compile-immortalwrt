@@ -79,6 +79,7 @@ jobs:
           ./scripts/feeds install -p nikki nikki luci-app-nikki
           for package_path in \
             package/feeds/packages/lm-sensors \
+            package/feeds/packages/adguardhome \
             package/feeds/luci/luci \
             package/feeds/nikki/nikki \
             package/feeds/nikki/luci-app-nikki; do
