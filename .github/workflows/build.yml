@@ -69,6 +69,8 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -p packages -a
           ./scripts/feeds install -p luci -a
+          ./scripts/feeds install -p packages lm-sensors
+          ./scripts/feeds install -p luci luci
           ./scripts/feeds install -p routing -a
           ./scripts/feeds install -p telephony -a
           ./scripts/feeds install -p video -a
@@ -90,7 +92,7 @@ jobs:
 
           cd immortalwrt
           make defconfig
-          for package in nikki luci-app-nikki adguardhome luci-app-adguardhome; do
+          for package in luci lm-sensors nikki luci-app-nikki adguardhome luci-app-adguardhome; do
             grep -qx "CONFIG_PACKAGE_${package}=y" .config || { echo "::error::Missing package: $package"; exit 1; }
           done
           grep -qx 'CONFIG_TARGET_ROOTFS_PARTSIZE=1024' .config || { echo '::error::Root partition is not 1024 MiB'; exit 1; }
